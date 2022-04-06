@@ -3,23 +3,11 @@ using System.Runtime.InteropServices;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX.Direct3D11;
 using Windows.Graphics.DirectX;
-using System.Diagnostics;
+using Windows.Graphics;
 
 namespace GraphicsCaptureItemNet6Problem;
 internal class Program
 {
-	static readonly Guid GraphicsCaptureItemGuid = new Guid("79C3F95B-31F7-4EC2-A464-632EF5D30760");
-
-	[ComImport]
-	[Guid("3628E81B-3CAC-4C60-B7F4-23CE0E0C3356")]
-	[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-	[ComVisible(true)]
-	interface IGraphicsCaptureItemInterop
-	{
-		IntPtr CreateForWindow(
-				[In] IntPtr window,
-				[In] ref Guid iid);
-	}
 
 	[DllImport(
 			"d3d11.dll",
@@ -31,47 +19,19 @@ internal class Program
 			)]
 	static extern UInt32 CreateDirect3D11DeviceFromDXGIDevice(IntPtr dxgiDevice, out IntPtr graphicsDevice);
 
-
-
 	static void Main(string[] args)
     {
-        Console.WriteLine("Hello World!");
-		var mon = MonitorEnumerationHelper.GetMonitors().Where(m => m.IsPrimary).First();
 
 		using var sharpDxDevice = new SharpDX.Direct3D11.Device(SharpDX.Direct3D.DriverType.Hardware, SharpDX.Direct3D11.DeviceCreationFlags.BgraSupport);
 		IDirect3DDevice direct3dDevice = CreateDirect3DDeviceFromSharpDXDevice(sharpDxDevice);
 
-		var process = Process.Start(new ProcessStartInfo 
-		{	FileName = "explorer.exe",
-			WindowStyle= ProcessWindowStyle.Minimized
-		});
-		try
-		{
-
-
-			var grapicsCaptureItem = CreateItemForHwnd(process.MainWindowHandle);
-
-
-			using var framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(
+		// this will throw internal cast exception 
+	    using var framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(
 							direct3dDevice,
 							DirectXPixelFormat.B8G8R8A8UIntNormalized,
 							2,
-							grapicsCaptureItem.Size);
-		}
-		finally
-		{
-			process.Kill();
-		}
-	}
-
-
-	private static GraphicsCaptureItem CreateItemForHwnd(IntPtr hwnd)
-	{
-		var factory = GraphicsCaptureItem.As<IGraphicsCaptureItemInterop>();
-		var itemPointer = factory.CreateForWindow(hwnd, GraphicsCaptureItemGuid);
-		var item = GraphicsCaptureItem.FromAbi(itemPointer);
-		Marshal.Release(itemPointer);
-		return item;
+							new SizeInt32(64, 64));
+	
 	}
 
 	private static IDirect3DDevice CreateDirect3DDeviceFromSharpDXDevice(SharpDX.Direct3D11.Device sharpDxDevice)
@@ -82,6 +42,9 @@ internal class Program
 			uint hr = CreateDirect3D11DeviceFromDXGIDevice(dxgiDevice.NativePointer, out IntPtr pUnknown);
 			if (hr == 0)
 			{
+				// with NET 6 there should be something like 
+				// IDirect3DDevice.FromAbi(pUnknown)
+				// see here
 				device = Marshal.GetObjectForIUnknown(pUnknown) as IDirect3DDevice;
 				Marshal.Release(pUnknown);
 			}
