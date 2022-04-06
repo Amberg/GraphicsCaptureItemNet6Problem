@@ -44,7 +44,7 @@ internal class Program
 			{
 				// with NET 6 there should be something like 
 				// IDirect3DDevice.FromAbi(pUnknown)
-				// see here
+				// see here https://github.com/microsoft/CsWinRT/blob/master/docs/interop.md#create-rcw
 				device = Marshal.GetObjectForIUnknown(pUnknown) as IDirect3DDevice;
 				Marshal.Release(pUnknown);
 			}
